@@ -1,34 +1,25 @@
-# Homestay Project
+## Screenshots
 
-A full-stack Homestay Booking & Service Marketplace platform built using Node.js, Express, MySQL, and JavaScript.
+### Login Page
+![Login](screenshots/login.png)
 
-## Features
+### Home Page
+![Home](screenshots/home.png)
 
-* User Authentication
-* Provider Dashboard
-* Admin Dashboard
-* Booking System
-* Chat System
-* QR Payment Upload
-* Payment Verification
-* Role-based Access
-* Responsive UI
+### Profile Page 1
+![Profile1](screenshots/profile1.png)
 
-## Tech Stack
+### Profile Page 2
+![Profile2](screenshots/profile2.png)
 
-* Frontend: HTML, CSS, JavaScript
-* Backend: Node.js, Express.js
-* Database: MySQL
-* Authentication: JWT / Session
+### Admin Panel 1
+![Admin1](screenshots/admin1.png)
 
-## Future Improvements
+### Admin Panel 2
+![Admin2](screenshots/admin2.png)
 
-* Online Payment Gateway
-* Notifications
-* Maps Integration
-* Reviews & Ratings
-* Deployment
+### Admin Panel 3
+![Admin3](screenshots/admin3.png)
 
-## Author
-
-Sarvesh Nabar
+### Admin Panel 4
+![Admin4](screenshots/admin4.png)
