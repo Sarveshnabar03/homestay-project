@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Booking Chat | Homestay</title>
+
+<style>
+body {
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f8fafc;
+}
+
+.header {
+  background:#0f172a;
+  color:white;
+  padding:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.header button {
+  background:white;
+  color:#0f172a;
+  border:none;
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.chat-wrap {
+  max-width:800px;
+  margin:20px auto;
+  background:white;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.messages {
+  height:420px;
+  overflow-y:auto;
+  padding:16px;
+  background:#f8fafc;
+}
+
+.msg {
+  max-width:70%;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  line-height:1.4;
+}
+
+.user {
+  background:#2563eb;
+  color:white;
+  margin-left:auto;
+}
+
+.admin {
+  background:#e2e8f0;
+  color:#0f172a;
+  margin-right:auto;
+}
+
+.input-box {
+  display:flex;
+  gap:8px;
+  padding:12px;
+  border-top:1px solid #e2e8f0;
+}
+
+.input-box input {
+  flex:1;
+  padding:12px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+}
+
+.input-box button {
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:12px 16px;
+  border-radius:10px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>Booking Chat</h2>
+  <button onclick="goBack()">Back</button>
+</div>
+
+<div class="chat-wrap">
+  <div id="messages" class="messages"></div>
+
+  <div class="input-box">
+    <input id="messageInput" placeholder="Type your message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script src="http://localhost:5000/socket.io/socket.io.js"></script>
+
+<script>
+const socket = io("http://localhost:5000");
+
+const params = new URLSearchParams(window.location.search);
+const bookingId = params.get("booking_id");
+const role = params.get("role");
+
+function getUserId(){
+  const token = localStorage.getItem("token");
+
+  if(!token){
+    return 0;
+  }
+
+  try {
+    const user = JSON.parse(atob(token.split(".")[1]));
+    return user.id || 0;
+  } catch {
+    return 0;
+  }
+}
+
+const senderId = role === "admin" ? 0 : getUserId();
+
+if(!bookingId || !role){
+  alert("Invalid chat");
+  window.location = "home.html";
+}
+
+socket.emit("joinBookingChat", bookingId);
+
+async function loadMessages(){
+  const res = await fetch("http://localhost:5000/api/chat/" + bookingId);
+  const data = await res.json();
+
+  const box = document.getElementById("messages");
+  box.innerHTML = "";
+
+  data.forEach(m => {
+    showMessage(m);
+  });
+
+  box.scrollTop = box.scrollHeight;
+}
+
+function showMessage(m){
+  const box = document.getElementById("messages");
+
+  const div = document.createElement("div");
+  div.className = "msg " + (m.sender_role === role ? "user" : "admin");
+
+  div.innerHTML = `
+    <b>${m.sender_role === "admin" ? "Admin" : "User"}</b><br>
+    ${m.message}
+  `;
+
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendMessage(){
+  const input = document.getElementById("messageInput");
+  const message = input.value.trim();
+
+  if(!message) return;
+
+  socket.emit("sendMessage", {
+    booking_id: bookingId,
+    sender_role: role,
+    sender_id: senderId,
+    message: message
+  });
+
+  input.value = "";
+}
+
+socket.on("receiveMessage", (data) => {
+  showMessage(data);
+});
+
+function goBack(){
+  if(role === "admin"){
+    window.location = "admin.html";
+  } else {
+    window.location = "profile.html";
+  }
+}
+
+loadMessages();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register | Homestay</title>
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#0f766e; --border:#e2e8f0; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:Inter,Segoe UI,Arial,sans-serif; background:linear-gradient(145deg,#ccfbf1,#f8fafc); color:var(--text); }
+    .card { width:min(440px,92vw); background:var(--card); border:1px solid var(--border); border-radius:18px; padding:28px; box-shadow:0 20px 50px rgba(15,23,42,.08); }
+    h1 { margin:0 0 6px; font-size:1.6rem; }
+    p { margin:0 0 20px; color:var(--muted); }
+    input, button { width:100%; border-radius:12px; border:1px solid var(--border); padding:12px; font-size:1rem; }
+    input { margin-bottom:12px; }
+    button { border:none; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+    .hint { margin-top:14px; color:var(--muted); font-size:.92rem; }
+    a { color:var(--accent); text-decoration:none; }
+    .msg { margin-top:10px; color:#b91c1c; min-height:1.2em; font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Create Account</h1>
+    <p>Join Homestay and discover better stays.</p>
+    <input id="name" placeholder="Full name">
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+    <div id="msg" class="msg"></div>
+    <div class="hint">Already have an account? <a href="login.html">Login</a></div>
+  </div>
+
+  <script>
+    async function register() {
+      const msg = document.getElementById("msg");
+      msg.textContent = "";
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!name || !email || !password) {
+        msg.textContent = "All fields are required.";
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/register", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ name, email, password })
+        });
+        const text = await res.text();
+        if (text.toLowerCase().includes("success")) {
+          window.location = "login.html";
+        } else {
+          msg.textContent = text || "Registration failed.";
+        }
+      } catch (err) {
+        msg.textContent = "Cannot connect to server.";
+      }
+    }
+  </script>
+</body>
+</html>

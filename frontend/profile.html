@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Bookings | Homestay</title>
+
+<style>
+  :root { --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#2563eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:Inter,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:1100px; margin:28px auto; padding:0 16px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; }
+  h1 { margin:0; font-size:1.5rem; }
+  h2 { margin-top:0; }
+  .btn { border:1px solid var(--border); background:#fff; padding:9px 12px; border-radius:10px; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; box-shadow:0 8px 20px rgba(15,23,42,.04); }
+  .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:auto; }
+  table { width:100%; border-collapse:collapse; min-width:760px; }
+  th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-size:.88rem; text-transform:uppercase; letter-spacing:.02em; }
+  .room-img { width:110px; height:75px; object-fit:cover; border-radius:10px; background:#e2e8f0; margin-bottom:8px; }
+  .badge { padding:5px 10px; border-radius:999px; font-size:.82rem; font-weight:700; display:inline-block; }
+  .pending { background:#fef3c7; color:#92400e; }
+  .approved { background:#dcfce7; color:#166534; }
+  .rejected { background:#fee2e2; color:#991b1b; }
+  .paid { background:#dbeafe; color:#1d4ed8; }
+  .submitted { background:#ede9fe; color:#5b21b6; }
+  .action { background:var(--accent); color:#fff; border:none; padding:8px 10px; border-radius:9px; cursor:pointer; }
+  .pay-btn { background:#16a34a; color:#fff; border:none; padding:8px 10px; border-radius:9px; cursor:pointer; }
+  .empty { padding:22px; color:var(--muted); text-align:center; }
+  .notification { padding:10px 0; border-bottom:1px solid var(--border); }
+  .muted { color:var(--muted); }
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; padding:20px; }
+  .modal-box { background:white; max-width:430px; margin:70px auto; padding:20px; border-radius:14px; }
+  .modal-box input, .modal-box select, .modal-box textarea {
+    width:100%; padding:10px; margin:8px 0 14px; border:1px solid var(--border); border-radius:10px;
+  }
+  .modal-box textarea { height:90px; resize:none; }
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <h1>My Profile & Bookings</h1>
+    <div>
+      <button class="btn" onclick="window.location='home.html'">Browse Rooms</button>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>User Profile</h2>
+    <p><b>User ID:</b> <span id="userId">-</span></p>
+    <p><b>Name:</b> <span id="userName">User</span></p>
+    <p><b>Email:</b> <span id="userEmail">-</span></p>
+  </div>
+
+  <div class="card">
+    <h2>Notifications</h2>
+    <div id="notifications" class="muted">Loading notifications...</div>
+  </div>
+
+  <div class="card">
+    <h2>My Booking History</h2>
+    <div class="table-wrap">
+      <div id="bookings">Loading bookings...</div>
+    </div>
+  </div>
+</div>
+
+<div id="reviewBox" class="modal">
+  <div class="modal-box">
+    <h2>Add Review</h2>
+    <input type="hidden" id="reviewBookingId">
+    <input type="hidden" id="reviewRoomId">
+
+    <label>Rating</label>
+    <select id="reviewRating">
+      <option value="5">⭐⭐⭐⭐⭐ 5</option>
+      <option value="4">⭐⭐⭐⭐ 4</option>
+      <option value="3">⭐⭐⭐ 3</option>
+      <option value="2">⭐⭐ 2</option>
+      <option value="1">⭐ 1</option>
+    </select>
+
+    <label>Review</label>
+    <textarea id="reviewText" placeholder="Write your review"></textarea>
+
+    <label>Upload Photo</label>
+    <input type="file" id="reviewPhoto" accept="image/*">
+
+    <button class="action" onclick="submitReview()">Submit Review</button>
+    <button class="btn" onclick="closeReview()">Cancel</button>
+  </div>
+</div>
+
+<div id="paymentBox" class="modal">
+  <div class="modal-box">
+    <h2>Manual QR Payment</h2>
+    <input type="hidden" id="paymentBookingId">
+
+    <p><b>Scan Admin Payment QR:</b></p>
+
+    <img 
+      id="userPaymentQR"
+      style="width:220px;height:220px;object-fit:cover;border-radius:12px;border:1px solid #ddd;display:none;"
+    >
+
+    <p id="qrNotAdded" style="color:#dc2626;display:none;">
+      Admin has not uploaded payment QR yet.
+    </p>
+
+    <label>Payment Note / Transaction ID</label>
+    <input id="paymentNote" placeholder="Enter transaction ID or note">
+
+    <label>Upload Payment Screenshot</label>
+    <input type="file" id="paymentScreenshot" accept="image/*">
+
+    <button class="action" onclick="submitPaymentProof()">Submit Payment Proof</button>
+    <button class="btn" onclick="closePaymentBox()">Cancel</button>
+  </div>
+</div>
+
+<script>
+function getUser(){
+  const token = localStorage.getItem("token");
+  if(!token){
+    window.location = "login.html";
+    return null;
+  }
+
+  try {
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch(error) {
+    localStorage.removeItem("token");
+    window.location = "login.html";
+    return null;
+  }
+}
+
+function setUserProfile(){
+  const user = getUser();
+  if(!user) return;
+  document.getElementById("userId").innerText = user.id || "-";
+  document.getElementById("userName").innerText = user.name || "User";
+  document.getElementById("userEmail").innerText = user.email || "-";
+}
+
+function getUserId(){
+  const user = getUser();
+  return user ? user.id : null;
+}
+
+function resolveImageSrc(image){
+  if(!image){
+    return "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=1200&auto=format&fit=crop";
+  }
+  if(image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:")){
+    return image;
+  }
+  return "http://localhost:5000/uploads/" + image;
+}
+
+function formatDate(value){
+  if(!value) return "-";
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+async function loadPaymentQR(){
+  const res = await fetch("http://localhost:5000/api/admin/payment-qr");
+  const data = await res.json();
+
+  const img = document.getElementById("userPaymentQR");
+  const msg = document.getElementById("qrNotAdded");
+
+  if(data.qr_image){
+    img.src = "http://localhost:5000/uploads/" + data.qr_image;
+    img.style.display = "block";
+    msg.style.display = "none";
+  } else {
+    img.style.display = "none";
+    msg.style.display = "block";
+  }
+}
+
+function getPaymentHtml(b){
+  const status = b.payment_status || "Pending";
+
+  if(status === "Paid"){
+    return `<span class="badge paid">Paid</span>`;
+  }
+
+  if(status === "Submitted"){
+    return `<span class="badge submitted">Submitted for Verification</span>`;
+  }
+
+  if(status === "Rejected"){
+    return `
+      <span class="badge rejected">Rejected</span>
+      <br><br>
+      <button class="pay-btn" onclick="openPaymentBox(${b.id})">Upload Again</button>
+    `;
+  }
+
+  if(b.status === "Approved"){
+    return `<button class="pay-btn" onclick="openPaymentBox(${b.id})">Pay / Upload Proof</button>`;
+  }
+
+  return `<span class="badge pending">Pending</span>`;
+}
+
+async function load(){
+  const userId = getUserId();
+  const res = await fetch("http://localhost:5000/api/booking/my/" + userId);
+  const data = await res.json();
+
+  if(!data.length){
+    document.getElementById("bookings").innerHTML = "<div class='empty'>No bookings yet.</div>";
+    return;
+  }
+
+  let html = `
+    <table>
+      <tr>
+        <th>Room</th>
+        <th>Booking Details</th>
+        <th>Status</th>
+        <th>Payment</th>
+        <th>Action</th>
+      </tr>
+  `;
+
+  data.forEach(b => {
+    const statusClass = (b.status || "Pending").toLowerCase();
+
+    html += `
+      <tr>
+        <td>
+          <img class="room-img" src="${resolveImageSrc(b.room_image)}">
+          <br>
+          <b>${b.room_name || b.room_type || ("Room #" + b.room_id)}</b>
+          <br>
+          <span class="muted">${b.room_location || "-"}</span>
+        </td>
+
+        <td>
+          <b>Check-in:</b> ${formatDate(b.date)}<br><br>
+          <b>Check-out:</b> ${formatDate(b.checkout_date)}<br><br>
+          <b>Guests:</b> ${b.guests || "-"}<br><br>
+          <b>Message:</b> ${b.message || "-"}
+        </td>
+
+        <td>
+          <span class="badge ${statusClass}">
+            ${b.status}
+          </span>
+        </td>
+
+        <td>${getPaymentHtml(b)}</td>
+
+        <td>
+          ${
+            b.status === "Pending"
+            ? `<button class="action" onclick="cancelBooking(${b.id})">Cancel</button>`
+            : b.status === "Approved"
+            ? `
+              <button class="action" onclick="openReview(${b.id}, ${b.room_id})">Add Review</button>
+              <br><br>
+              <button class="action" onclick="openChat(${b.id})">Chat</button>
+            `
+            : "-"
+          }
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  document.getElementById("bookings").innerHTML = html;
+}
+
+async function loadNotifications(){
+  const userId = getUserId();
+  const res = await fetch("http://localhost:5000/api/admin/notifications/" + userId);
+  const data = await res.json();
+
+  if(!data.length){
+    document.getElementById("notifications").innerHTML = "No notifications.";
+    return;
+  }
+
+  let html = "";
+  data.forEach(n => {
+    html += `<div class="notification">🔔 ${n.message}</div>`;
+  });
+
+  document.getElementById("notifications").innerHTML = html;
+}
+
+async function cancelBooking(id){
+  if(!confirm("Cancel this booking?")) return;
+
+  const res = await fetch("http://localhost:5000/api/booking/cancel/" + id, {
+    method:"PUT"
+  });
+
+  const data = await res.json();
+  alert(data.message || "Booking cancelled");
+  load();
+  loadNotifications();
+}
+
+function openReview(bookingId, roomId){
+  document.getElementById("reviewBookingId").value = bookingId;
+  document.getElementById("reviewRoomId").value = roomId;
+  document.getElementById("reviewText").value = "";
+  document.getElementById("reviewPhoto").value = "";
+  document.getElementById("reviewBox").style.display = "block";
+}
+
+function closeReview(){
+  document.getElementById("reviewBox").style.display = "none";
+}
+
+async function submitReview(){
+  const userId = getUserId();
+  const bookingId = document.getElementById("reviewBookingId").value;
+  const roomId = document.getElementById("reviewRoomId").value;
+  const rating = document.getElementById("reviewRating").value;
+  const review = document.getElementById("reviewText").value.trim();
+  const photo = document.getElementById("reviewPhoto").files[0];
+
+  if(!review){
+    alert("Please write review");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("user_id", userId);
+  formData.append("booking_id", bookingId);
+  formData.append("room_id", roomId);
+  formData.append("rating", rating);
+  formData.append("review", review);
+
+  if(photo){
+    formData.append("photo", photo);
+  }
+
+  const res = await fetch("http://localhost:5000/api/reviews/add", {
+    method:"POST",
+    body: formData
+  });
+
+  const data = await res.json();
+  alert(data.message);
+
+  if(data.success){
+    closeReview();
+    load();
+  }
+}
+
+function openChat(bookingId){
+  window.location = "chat.html?booking_id=" + bookingId + "&role=user";
+}
+
+function openPaymentBox(bookingId){
+  document.getElementById("paymentBookingId").value = bookingId;
+  document.getElementById("paymentNote").value = "";
+  document.getElementById("paymentScreenshot").value = "";
+  document.getElementById("paymentBox").style.display = "block";
+  loadPaymentQR();
+}
+
+function closePaymentBox(){
+  document.getElementById("paymentBox").style.display = "none";
+}
+
+async function submitPaymentProof(){
+  const bookingId = document.getElementById("paymentBookingId").value;
+  const paymentNote = document.getElementById("paymentNote").value.trim();
+  const screenshot = document.getElementById("paymentScreenshot").files[0];
+
+  if(!screenshot){
+    alert("Please upload payment screenshot");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("booking_id", bookingId);
+  formData.append("payment_note", paymentNote);
+  formData.append("payment_screenshot", screenshot);
+
+  const res = await fetch("http://localhost:5000/api/booking/upload-payment", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await res.json();
+  alert(data.message);
+
+  if(data.success){
+    closePaymentBox();
+    load();
+    loadNotifications();
+  }
+}
+
+function logout(){
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  window.location = "login.html";
+}
+
+setUserProfile();
+load();
+loadNotifications();
+loadPaymentQR();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "homestay-project",
+  "version": "1.0.0",
+  "main": "backend/app.js",
+  "scripts": {
+    "start": "node backend/app.js"
+  },
+  "dependencies": {
+    "multer": "^2.1.1"
+  }
+}

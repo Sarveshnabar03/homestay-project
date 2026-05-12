@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Homestay</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    :root { --bg:#f8fafc; --panel:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#1d4ed8; --danger:#dc2626; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:Inter,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text); display:flex; }
+    .sidebar { width:230px; min-height:100vh; background:#0f172a; color:#e2e8f0; padding:20px; position:fixed; }
+    .sidebar h2 { margin-bottom:10px; }
+    .sidebar p { color:#94a3b8; font-size:.9rem; margin-bottom:20px; }
+    .sidebar button { width:100%; margin-top:8px; padding:10px; border:none; border-radius:10px; background:#1e293b; color:#fff; cursor:pointer; }
+    .main { margin-left:230px; width:100%; padding:18px; }
+    h1 { margin-bottom:14px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 10px 26px rgba(15,23,42,.04); margin-bottom:14px; }
+    .card h3 { color:var(--muted); margin-bottom:6px; font-size:.95rem; }
+    .big { font-size:1.7rem; font-weight:800; }
+    .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:8px; }
+    input, button, select { padding:10px; border:1px solid var(--border); border-radius:10px; }
+    button { background:var(--accent); color:#fff; border:none; cursor:pointer; }
+    .delete-btn { background:var(--danger); }
+    .room-card { border:1px solid var(--border); border-radius:12px; padding:12px; margin:10px 0; display:grid; grid-template-columns:100px 1fr; gap:10px; align-items:start; }
+    .room-card img { width:100px; height:76px; object-fit:cover; border-radius:8px; background:#e2e8f0; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { border-bottom:1px solid var(--border); padding:10px; text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:.86rem; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .status { padding:4px 9px; border-radius:999px; font-size:.8rem; font-weight:700; }
+    .status.Pending { background:#fef3c7; color:#92400e; }
+    .status.Approved { background:#dcfce7; color:#166534; }
+    .status.Rejected { background:#fee2e2; color:#991b1b; }
+    #adminMap { height:300px; width:100%; margin-top:12px; border-radius:12px; border:1px solid var(--border); }
+    .small-note { margin-top:10px; color:#64748b; font-size:.9rem; }
+  </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>Admin Panel</h2>
+  <p>Homestay control center</p>
+  <button onclick="refreshAll()">Refresh All</button>
+  <button onclick="window.location='home.html'">Open User View</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+
+<h1>Dashboard Overview</h1>
+
+<div class="grid">
+  <div class="card"><h3>Total Bookings</h3><div id="total" class="big">0</div></div>
+  <div class="card"><h3>Approved</h3><div id="approved" class="big">0</div></div>
+  <div class="card"><h3>Pending</h3><div id="pending" class="big">0</div></div>
+  <div class="card"><h3>Rejected</h3><div id="rejected" class="big">0</div></div>
+</div>
+
+<div class="card">
+  <h2>Add Room</h2>
+
+  <div class="form-grid">
+    <input id="title" placeholder="Title">
+    <input id="desc" placeholder="Description">
+    <input id="price" placeholder="Price">
+    <input id="location" placeholder="Location name example: Vengurla Beach">
+    <input id="latitude" placeholder="Latitude" readonly>
+    <input id="longitude" placeholder="Longitude" readonly>
+
+    <label>Main Room Image</label>
+    <input type="file" id="fileInput" accept="image/*">
+
+    <label>Bedroom Image</label>
+    <input type="file" id="bedroomImage" accept="image/*">
+
+    <label>Bathroom Image</label>
+    <input type="file" id="bathroomImage" accept="image/*">
+
+    <label>Balcony Image</label>
+    <input type="file" id="balconyImage" accept="image/*">
+
+    <label>Outside View Image</label>
+    <input type="file" id="outsideImage" accept="image/*">
+  </div>
+
+  <p class="small-note">Click on the map to select the room location.</p>
+  <div id="adminMap"></div>
+
+  <button onclick="addRoom()" style="margin-top:12px;">Add Room</button>
+</div>
+
+<div class="card">
+  <h2>Rooms</h2>
+  <div class="toolbar"><button onclick="loadRooms()">Load</button></div>
+  <div id="rooms"></div>
+</div>
+
+<div class="card">
+  <h2>Bookings</h2>
+  <div class="toolbar"><button onclick="loadBookings()">Load</button></div>
+  <div id="bookings"></div>
+</div>
+
+<div class="card">
+  <h2>Payment QR Management</h2>
+
+  <p style="margin-bottom:10px;">Upload payment QR code for users.</p>
+
+  <input type="file" id="paymentQrImage" accept="image/*">
+
+  <br><br>
+
+  <button onclick="uploadPaymentQR()">Upload QR</button>
+
+  <button onclick="deletePaymentQR()" style="background:#dc2626;">
+    Delete QR
+  </button>
+
+  <br><br>
+
+  <img 
+    id="currentPaymentQR"
+    style="width:220px;height:220px;object-fit:cover;border-radius:12px;border:1px solid #ddd;display:none;"
+  >
+</div>
+
+<div class="card">
+  <h2>Reviews</h2>
+  <div class="toolbar"><button onclick="loadReviews()">Load Reviews</button></div>
+  <div id="reviews"></div>
+</div>
+
+<div class="card">
+  <h2>Analytics</h2>
+  <canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<script>
+function logout(){
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  window.location = "login.html";
+}
+
+function resolveImageSrc(image){
+  if (!image) return "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=1200&auto=format&fit=crop";
+  if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:")) return image;
+  return "http://localhost:5000/uploads/" + image;
+}
+
+let adminMap = L.map("adminMap").setView([15.2993, 74.1240], 9);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap"
+}).addTo(adminMap);
+
+let selectedMarker;
+
+adminMap.on("click", function(e){
+  const lat = e.latlng.lat;
+  const lng = e.latlng.lng;
+
+  document.getElementById("latitude").value = lat;
+  document.getElementById("longitude").value = lng;
+
+  if(selectedMarker){
+    adminMap.removeLayer(selectedMarker);
+  }
+
+  selectedMarker = L.marker([lat, lng]).addTo(adminMap);
+});
+
+async function addRoom(){
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("desc").value.trim();
+  const price = document.getElementById("price").value.trim();
+  const location = document.getElementById("location").value.trim();
+  const latitude = document.getElementById("latitude").value.trim();
+  const longitude = document.getElementById("longitude").value.trim();
+
+  const file = document.getElementById("fileInput").files[0];
+  const bedroomImage = document.getElementById("bedroomImage").files[0];
+  const bathroomImage = document.getElementById("bathroomImage").files[0];
+  const balconyImage = document.getElementById("balconyImage").files[0];
+  const outsideImage = document.getElementById("outsideImage").files[0];
+
+  if(!title || !description || !price || !location || !latitude || !longitude || !file){
+    alert("Please fill all fields, select main image, and click location on map.");
+    return;
+  }
+
+  const formData = new FormData();
+
+  formData.append("title", title);
+  formData.append("description", description);
+  formData.append("price", price);
+  formData.append("location", location);
+  formData.append("latitude", latitude);
+  formData.append("longitude", longitude);
+
+  formData.append("image", file);
+
+  if(bedroomImage) formData.append("bedroomImage", bedroomImage);
+  if(bathroomImage) formData.append("bathroomImage", bathroomImage);
+  if(balconyImage) formData.append("balconyImage", balconyImage);
+  if(outsideImage) formData.append("outsideImage", outsideImage);
+
+  const res = await fetch("http://localhost:5000/api/rooms/add",{
+    method:"POST",
+    body: formData
+  });
+
+  alert(await res.text());
+
+  document.getElementById("title").value = "";
+  document.getElementById("desc").value = "";
+  document.getElementById("price").value = "";
+  document.getElementById("location").value = "";
+  document.getElementById("latitude").value = "";
+  document.getElementById("longitude").value = "";
+  document.getElementById("fileInput").value = "";
+  document.getElementById("bedroomImage").value = "";
+  document.getElementById("bathroomImage").value = "";
+  document.getElementById("balconyImage").value = "";
+  document.getElementById("outsideImage").value = "";
+
+  if(selectedMarker){
+    adminMap.removeLayer(selectedMarker);
+    selectedMarker = null;
+  }
+
+  loadRooms();
+}
+
+async function loadRooms(){
+  const res = await fetch("http://localhost:5000/api/rooms/all");
+  const data = await res.json();
+
+  let html = "";
+
+  data.forEach(r => {
+    let galleryHtml = "";
+
+    if(r.gallery && r.gallery.length){
+      galleryHtml = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          ${r.gallery.map(g => `
+            <div>
+              <img src="${resolveImageSrc(g.image)}" style="width:80px;height:60px;object-fit:cover;border-radius:8px;">
+              <br>
+              <small>${g.image_type || "Gallery"}</small>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    html += `<div class='room-card'>
+      <img src='${resolveImageSrc(r.image)}' alt='${r.title}'>
+      <div>
+        <h3>${r.title}</h3>
+        <p>${r.description}</p>
+        <p><b>Location:</b> ${r.location || "Not added"}</p>
+        <p><b>Latitude:</b> ${r.latitude || "-"}</p>
+        <p><b>Longitude:</b> ${r.longitude || "-"}</p>
+        ${galleryHtml}
+        <b>INR ${r.price}</b> ${r.is_available ? "<span class='status Approved'>Available</span>" : "<span class='status Rejected'>Unavailable</span>"}
+        <div class="toolbar">
+          <button onclick='toggle(${r.id})'>Toggle Availability</button>
+          <button class='delete-btn' onclick='deleteRoom(${r.id})'>Delete</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById("rooms").innerHTML = html;
+}
+
+async function toggle(id){
+  await fetch("http://localhost:5000/api/rooms/toggle/" + id, { method:"PUT" });
+  loadRooms();
+}
+
+async function deleteRoom(id){
+  if(confirm("Delete?")){
+    await fetch("http://localhost:5000/api/rooms/delete/" + id, { method:"DELETE" });
+    loadRooms();
+  }
+}
+
+async function loadBookings(){
+  const res = await fetch("http://localhost:5000/api/admin/bookings");
+  const data = await res.json();
+
+  let html = `
+    <table>
+      <tr>
+        <th>Customer Details</th>
+        <th>Room Details</th>
+        <th>Booking Info</th>
+        <th>Payment</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+  `;
+
+  data.forEach(b => {
+    html += `
+      <tr>
+        <td>
+          <b>Name:</b> ${b.customer_name || b.name || "Not added"}<br><br>
+          <b>Email:</b> ${b.customer_email || b.email || "Not added"}<br><br>
+          <b>Phone:</b> ${b.customer_phone || b.phone || "Not added"}<br><br>
+          <b>Guests:</b> ${b.guests || "-"}<br><br>
+          <b>Message:</b><br>
+          ${b.message || "-"}
+        </td>
+
+        <td>
+          ${
+            b.room_image
+            ? `<img src="http://localhost:5000/uploads/${b.room_image}" style="width:120px;height:80px;object-fit:cover;border-radius:10px;margin-bottom:10px;">`
+            : ""
+          }
+
+          <br>
+
+          <b>Room:</b> ${b.room_title || "Room #" + b.room_id}<br><br>
+          <b>Price:</b> INR ${b.room_price || "-"}<br><br>
+          <b>Location:</b> ${b.room_location || "-"}
+        </td>
+
+        <td>
+          <b>Check-in:</b><br>
+          ${b.date || "-"}<br><br>
+
+          <b>Check-out:</b><br>
+          ${b.checkout_date || "-"}
+        </td>
+
+        <td>
+          <b>Status:</b> ${b.payment_status || "Pending"}<br><br>
+          <b>Note:</b> ${b.payment_note || "-"}<br><br>
+
+          ${
+            b.payment_screenshot
+            ? `<a href="http://localhost:5000/uploads/${b.payment_screenshot}" target="_blank">
+                 <img src="http://localhost:5000/uploads/${b.payment_screenshot}" style="width:120px;height:90px;object-fit:cover;border-radius:10px;">
+               </a><br><br>`
+            : "No screenshot<br><br>"
+          }
+
+          ${
+            b.payment_status === "Submitted"
+            ? `
+              <button onclick="markPaid(${b.id})" style="background:#16a34a;">Mark Paid</button>
+              <br><br>
+              <button class="delete-btn" onclick="rejectPayment(${b.id})">Reject Payment</button>
+            `
+            : ""
+          }
+        </td>
+
+        <td>
+          <span class="status ${b.status}">
+            ${b.status}
+          </span>
+        </td>
+
+        <td>
+          <button onclick="accept(${b.id})">Accept</button>
+
+          <br><br>
+
+          <button class="delete-btn" onclick="reject(${b.id})">Reject</button>
+
+          <br><br>
+
+          <button 
+            style="background:black;color:white;padding:10px;border:none;border-radius:10px;cursor:pointer;"
+            onclick="deleteBooking(${b.id})"
+          >
+            Delete
+          </button>
+
+          <br><br>
+
+          <button 
+            style="background:#16a34a;color:white;padding:10px;border:none;border-radius:10px;cursor:pointer;"
+            onclick="openChat(${b.id})"
+          >
+            Chat
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+
+  document.getElementById("bookings").innerHTML = html;
+}
+
+async function accept(id){
+  await fetch("http://localhost:5000/api/admin/accept/" + id, { method:"PUT" });
+  loadBookings();
+  loadStats();
+}
+
+async function reject(id){
+  await fetch("http://localhost:5000/api/admin/reject/" + id, { method:"PUT" });
+  loadBookings();
+  loadStats();
+}
+
+async function deleteBooking(id){
+  const confirmDelete = confirm("Delete this booking request?");
+  if(!confirmDelete) return;
+
+  const res = await fetch("http://localhost:5000/api/admin/delete-booking/" + id, {
+    method:"DELETE"
+  });
+
+  alert(await res.text());
+
+  loadBookings();
+  loadStats();
+}
+
+async function markPaid(id){
+  if(!confirm("Mark this payment as Paid?")) return;
+
+  const res = await fetch("http://localhost:5000/api/admin/mark-paid/" + id, {
+    method: "PUT"
+  });
+
+  alert(await res.text());
+  loadBookings();
+  loadStats();
+}
+
+async function rejectPayment(id){
+  if(!confirm("Reject this payment proof?")) return;
+
+  const res = await fetch("http://localhost:5000/api/admin/reject-payment/" + id, {
+    method: "PUT"
+  });
+
+  alert(await res.text());
+  loadBookings();
+}
+
+let chart;
+
+async function loadStats(){
+  const res = await fetch("http://localhost:5000/api/admin/stats");
+  const data = await res.json();
+
+  total.innerText = data.total || 0;
+  approved.innerText = data.approved || 0;
+  pending.innerText = data.pending || 0;
+  rejected.innerText = data.rejected || 0;
+
+  const ctx = document.getElementById("chart");
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: ["Approved", "Pending", "Rejected"],
+      datasets: [{
+        label: "Bookings",
+        data: [data.approved || 0, data.pending || 0, data.rejected || 0],
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37,99,235,.2)",
+        tension: .35,
+        fill: true
+      }]
+    }
+  });
+}
+
+async function loadReviews(){
+  const res = await fetch("http://localhost:5000/api/admin/reviews");
+  const data = await res.json();
+
+  if(!data.length){
+    document.getElementById("reviews").innerHTML = "<p>No reviews found.</p>";
+    return;
+  }
+
+  let html = `
+    <table>
+      <tr>
+        <th>User</th>
+        <th>Room</th>
+        <th>Review</th>
+        <th>Photo</th>
+        <th>Action</th>
+      </tr>
+  `;
+
+  data.forEach(r => {
+    html += `
+      <tr>
+        <td>
+          <b>${r.user_name || "User"}</b><br>
+          ${r.user_email || "-"}
+        </td>
+
+        <td>
+          <b>${r.room_title || "Room #" + r.room_id}</b><br>
+          ${r.room_location || "-"}
+        </td>
+
+        <td>
+          <b>${"⭐".repeat(Number(r.rating))}</b><br><br>
+          ${r.review || "-"}
+        </td>
+
+        <td>
+          ${
+            r.photo
+            ? `<img src="http://localhost:5000/uploads/${r.photo}" style="width:120px;height:90px;object-fit:cover;border-radius:10px;">`
+            : "No photo"
+          }
+        </td>
+
+        <td>
+          <button class="delete-btn" onclick="deleteReview(${r.id})">
+            Delete
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  document.getElementById("reviews").innerHTML = html;
+}
+
+async function deleteReview(id){
+  if(!confirm("Delete this review?")) return;
+
+  const res = await fetch("http://localhost:5000/api/admin/delete-review/" + id, {
+    method: "DELETE"
+  });
+
+  alert(await res.text());
+  loadReviews();
+}
+
+async function loadPaymentQR(){
+  const res = await fetch("http://localhost:5000/api/admin/payment-qr");
+  const data = await res.json();
+
+  const img = document.getElementById("currentPaymentQR");
+
+  if(data.qr_image){
+    img.src = "http://localhost:5000/uploads/" + data.qr_image;
+    img.style.display = "block";
+  } else {
+    img.style.display = "none";
+  }
+}
+
+async function uploadPaymentQR(){
+  const qrImage = document.getElementById("paymentQrImage").files[0];
+
+  if(!qrImage){
+    alert("Please select QR image");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("qr_image", qrImage);
+
+  const res = await fetch("http://localhost:5000/api/admin/payment-qr", {
+    method:"POST",
+    body: formData
+  });
+
+  alert(await res.text());
+
+  document.getElementById("paymentQrImage").value = "";
+
+  loadPaymentQR();
+}
+
+async function deletePaymentQR(){
+  const ok = confirm("Delete payment QR?");
+
+  if(!ok) return;
+
+  const res = await fetch("http://localhost:5000/api/admin/payment-qr", {
+    method:"DELETE"
+  });
+
+  alert(await res.text());
+
+  loadPaymentQR();
+}
+
+function openChat(bookingId){
+  window.location = "chat.html?booking_id=" + bookingId + "&role=admin";
+}
+
+function refreshAll(){
+  loadStats();
+  loadRooms();
+  loadBookings();
+  loadReviews();
+  loadPaymentQR();
+}
+
+refreshAll();
+</script>
+
+</body>
+</html>

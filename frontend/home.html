@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Homestay | Discover Stays</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    :root { --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --accent:#2563eb; --border:#e2e8f0; --success:#15803d; --danger:#b91c1c; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Inter,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text); }
+    .hero { padding:60px 18px 24px; background:linear-gradient(135deg,#1d4ed8,#0f172a); color:#fff; }
+    .hero-inner { max-width:1120px; margin:0 auto; }
+    .hero h1 { margin:0; font-size:clamp(1.8rem,3vw,2.6rem); }
+    .hero p { opacity:.9; margin-top:10px; }
+    .nav { margin-top:16px; display:flex; gap:8px; }
+    .nav button { border:none; background:#fff; color:#0f172a; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .wrap { max-width:1120px; margin:0 auto; padding:18px; }
+    .filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; margin-top:-28px; box-shadow:0 12px 30px rgba(15,23,42,.08); }
+    input, select, .btn { width:100%; border:1px solid var(--border); border-radius:10px; padding:10px; background:#fff; }
+    .btn { background:var(--accent); color:#fff; border:none; cursor:pointer; font-weight:600; }
+    .rooms { margin-top:16px; display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); }
+    .room-card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+    .room-card img { width:100%; height:170px; object-fit:cover; background:#e2e8f0; }
+    .room-content { padding:12px; }
+    .meta { display:flex; justify-content:space-between; margin:10px 0; color:var(--muted); }
+    .price { font-weight:800; color:#0f766e; }
+    .badge { padding:4px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
+    .available { background:#dcfce7; color:var(--success); }
+    .not-available { background:#fee2e2; color:var(--danger); }
+    .empty { background:#fff; border:1px dashed var(--border); border-radius:12px; padding:18px; text-align:center; color:var(--muted); }
+    .note { margin-top:8px; color:var(--muted); font-size:.88rem; }
+    .room-map { height:180px; width:100%; border-radius:12px; margin-top:10px; border:1px solid var(--border); }
+    .review-box { border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:8px; background:#f8fafc; }
+    .review-photo { width:100%; height:130px; object-fit:cover; border-radius:10px; margin-top:6px; }
+
+    .gallery {
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:8px;
+      margin-top:10px;
+      margin-bottom:10px;
+    }
+
+    .gallery-item {
+      background:#f8fafc;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:6px;
+    }
+
+    .gallery-item img {
+      width:100%;
+      height:85px;
+      object-fit:cover;
+      border-radius:8px;
+      display:block;
+    }
+
+    .gallery-item small {
+      display:block;
+      margin-top:4px;
+      color:#64748b;
+      font-size:12px;
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="hero">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <h1>Find Your Perfect Homestay</h1>
+
+      <div id="welcomeUser" style="
+        background:white;
+        color:#0f172a;
+        padding:10px 16px;
+        border-radius:999px;
+        font-weight:bold;
+        box-shadow:0 4px 12px rgba(0,0,0,.1);
+      ">
+        Welcome 👋
+      </div>
+    </div>
+
+    <p>Professional booking experience with real-time conflict prevention.</p>
+
+    <div class="nav">
+      <button onclick="window.location='profile.html'">My Bookings</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="filters">
+      <input id="searchText" placeholder="Search by title">
+      <input type="number" id="minPrice" placeholder="Min Price">
+      <input type="number" id="maxPrice" placeholder="Max Price">
+
+      <select id="availability">
+        <option value="all">All availability</option>
+        <option value="available">Available only</option>
+        <option value="unavailable">Unavailable only</option>
+      </select>
+
+      <select id="sortBy">
+        <option value="price-asc">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+        <option value="title">Title</option>
+      </select>
+
+      <button class="btn" onclick="filterRooms()">Apply Filters</button>
+    </div>
+
+    <div class="note">Best feature added: the system now blocks double-booking for the same room on the same date.</div>
+    <div class="rooms" id="rooms"></div>
+  </div>
+
+<script>
+function getUserId(){
+  const token = localStorage.getItem("token");
+
+  if(!token){
+    window.location = "login.html";
+    return null;
+  }
+
+  return JSON.parse(atob(token.split(".")[1])).id;
+}
+
+function logout(){
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  window.location = "login.html";
+}
+
+let allRooms = [];
+
+function resolveImageSrc(image) {
+  if (!image) return "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=1200&auto=format&fit=crop";
+  if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:")) return image;
+  return "http://localhost:5000/uploads/" + image;
+}
+
+function loadWelcomeUser(){
+  const token = localStorage.getItem("token");
+
+  if(!token) return;
+
+  try{
+    const user = JSON.parse(atob(token.split(".")[1]));
+
+    document.getElementById("welcomeUser").innerHTML =
+      `Welcome, ${user.name || "User"} 👋`;
+
+  }catch(err){
+    console.log(err);
+  }
+}
+
+async function loadRooms(){
+  const res = await fetch("http://localhost:5000/api/rooms/all");
+  allRooms = await res.json();
+  filterRooms();
+}
+
+function buildGallery(r){
+  if(!r.gallery || !Array.isArray(r.gallery) || r.gallery.length === 0){
+    return "";
+  }
+
+  return `
+    <div class="gallery">
+      ${r.gallery.map(g => `
+        <div class="gallery-item">
+          <img src="${resolveImageSrc(g.image)}" alt="${g.image_type || "Gallery"}">
+          <small>${g.image_type || "Gallery"}</small>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function displayRooms(data){
+  const roomRoot = document.getElementById("rooms");
+
+  if(!data.length){
+    roomRoot.innerHTML = "<div class='empty'>No rooms match these filters.</div>";
+    return;
+  }
+
+  roomRoot.innerHTML = data.map(r => `
+    <div class="room-card">
+      <img src="${resolveImageSrc(r.image)}" alt="${r.title}">
+
+      <div class="room-content">
+        <h3>${r.title}</h3>
+
+        <p>${r.description || ""}</p>
+
+        <p><b>Location:</b> ${r.location || "Not added"}</p>
+
+        ${buildGallery(r)}
+
+        ${
+          r.latitude && r.longitude
+          ? `<div id="map${r.id}" class="room-map"></div>`
+          : ""
+        }
+
+        <div class="meta">
+          <span class="price">INR ${r.price}</span>
+          <span class="badge ${r.is_available ? "available" : "not-available"}">
+            ${r.is_available ? "Available" : "Unavailable"}
+          </span>
+        </div>
+
+        <button class="btn" onclick="loadReviews(${r.id})" style="margin-top:8px;background:#0f172a;">
+          View Reviews
+        </button>
+
+        <div id="reviews${r.id}" style="margin-top:10px;"></div>
+
+        <input type="date" id="date${r.id}" style="margin-top:8px;">
+
+        <button 
+          class="btn" 
+          ${!r.is_available ? "disabled" : ""} 
+          onclick="book(${r.id})" 
+          style="margin-top:8px;opacity:${r.is_available ? "1" : ".55"}">
+          Book Now
+        </button>
+      </div>
+    </div>
+  `).join("");
+
+  setTimeout(() => {
+    data.forEach(r => {
+      if(r.latitude && r.longitude){
+        const lat = Number(r.latitude);
+        const lng = Number(r.longitude);
+
+        const map = L.map("map" + r.id).setView([lat, lng], 13);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap"
+        }).addTo(map);
+
+        L.marker([lat, lng]).addTo(map)
+          .bindPopup(r.title)
+          .openPopup();
+      }
+    });
+  }, 100);
+}
+
+function filterRooms(){
+  const searchText = document.getElementById("searchText").value.trim().toLowerCase();
+  const min = Number(document.getElementById("minPrice").value || 0);
+  const max = Number(document.getElementById("maxPrice").value || Number.MAX_SAFE_INTEGER);
+  const availability = document.getElementById("availability").value;
+  const sortBy = document.getElementById("sortBy").value;
+
+  let filtered = allRooms.filter(r => {
+    const titleMatches = (r.title || "").toLowerCase().includes(searchText);
+    const priceMatches = Number(r.price) >= min && Number(r.price) <= max;
+    const availableMatches = availability === "all" || (availability === "available" ? !!r.is_available : !r.is_available);
+
+    return titleMatches && priceMatches && availableMatches;
+  });
+
+  filtered.sort((a,b) => {
+    if(sortBy === "price-asc") return Number(a.price) - Number(b.price);
+    if(sortBy === "price-desc") return Number(b.price) - Number(a.price);
+    return (a.title || "").localeCompare(b.title || "");
+  });
+
+  displayRooms(filtered);
+}
+
+async function book(roomId){
+  const checkinDate = document.getElementById("date" + roomId).value;
+
+  if(!checkinDate){
+    alert("Select check-in date first.");
+    return;
+  }
+
+  const customer_name = prompt("Enter your full name:");
+  if(!customer_name) return;
+
+  const customer_email = prompt("Enter your email:");
+  if(!customer_email) return;
+
+  const customer_phone = prompt("Enter your phone number:");
+  if(!customer_phone) return;
+
+  const checkout_date = prompt("Enter checkout date YYYY-MM-DD:");
+  if(!checkout_date) return;
+
+  const guests = prompt("How many guests?");
+  if(!guests) return;
+
+  const message = prompt("Any message for admin?") || "";
+
+  const res = await fetch("http://localhost:5000/api/booking/book", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      user_id: getUserId(),
+      room_id: roomId,
+      date: checkinDate,
+      checkout_date: checkout_date,
+      customer_name: customer_name,
+      customer_email: customer_email,
+      customer_phone: customer_phone,
+      guests: guests,
+      message: message
+    })
+  });
+
+  const data = await res.json();
+  alert(data.message);
+}
+
+async function loadReviews(roomId){
+  const box = document.getElementById("reviews" + roomId);
+
+  const res = await fetch("http://localhost:5000/api/reviews/room/" + roomId);
+  const data = await res.json();
+
+  if(!data.length){
+    box.innerHTML = "<p>No reviews yet.</p>";
+    return;
+  }
+
+  let html = "";
+
+  data.forEach(r => {
+    html += `
+      <div class="review-box">
+        <b>${r.user_name || "User"}</b><br>
+        <span>${"⭐".repeat(Number(r.rating))}</span>
+        <p>${r.review}</p>
+
+        ${
+          r.photo
+          ? `<img src="http://localhost:5000/uploads/${r.photo}" class="review-photo">`
+          : ""
+        }
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+}
+
+loadWelcomeUser();
+loadRooms();
+</script>
+
+</body>
+</html>
