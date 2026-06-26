@@ -1,22 +1,22 @@
-require('dotenv').config();
+require("dotenv").config();
 const mysql = require("mysql2");
 
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || "127.0.0.1",
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "", // Set your MySQL root password here or in .env
-  database: process.env.DB_NAME || "homestay"
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-db.connect(err => {
+db.connect((err) => {
   if (err) {
-    console.log("DB Error:", err);
-    console.log(
-      "Please start MySQL and verify backend/.env contains DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME"
-    );
+    console.error("Database connection failed:", err);
   } else {
-    console.log("MySQL Connected");
+    console.log("✅ MySQL Connected");
   }
 });
 
